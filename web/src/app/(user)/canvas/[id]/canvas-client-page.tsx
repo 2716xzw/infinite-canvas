@@ -3,13 +3,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent as ReactChangeEvent, DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { BookOpen, Bot, Home, ImageIcon, Images, List, Menu, Music2, Plus, Redo2, Settings2, Trash2, Undo2, Upload, Video } from "lucide-react";
+import { Bot, Home, ImageIcon, Images, List, Menu, Music2, Plus, Redo2, Settings2, Trash2, Undo2, Upload, Video } from "lucide-react";
 import { saveAs } from "file-saver";
 
 import { requestEdit, requestGeneration, requestImageQuestion } from "@/services/api/image";
 import { requestAudioGeneration, storeGeneratedAudio } from "@/services/api/audio";
 import { requestVideoGeneration, storeGeneratedVideo } from "@/services/api/video";
-import { DOCS_URL } from "@/constant/env";
 import { defaultConfig, type AiConfig, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { resolveImageUrl, uploadImage, type UploadedImage } from "@/services/image-storage";
 import { resolveMediaUrl, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
@@ -27,6 +26,7 @@ import { ActiveConnectionPath, ConnectionPath } from "../components/canvas-conne
 import { CanvasConfigComposer } from "../components/canvas-config-composer";
 import { CanvasConfigNodePanel } from "../components/canvas-config-node-panel";
 import { CANVAS_AGENT_PANEL_MOTION_MS, CanvasAssistantPanel } from "../components/canvas-assistant-panel";
+import { CanvasBlankContextMenu } from "../components/canvas-blank-context-menu";
 import { CanvasNodeContextMenu } from "../components/canvas-context-menu";
 import { CanvasNodeAngleDialog, type CanvasImageAngleParams } from "../components/canvas-node-angle-dialog";
 import { CanvasNodeCropDialog, type CanvasImageCropRect } from "../components/canvas-node-crop-dialog";
@@ -849,6 +849,20 @@ function InfiniteCanvasPage() {
         setDialogNodeId(null);
         setEditingNodeId(null);
     }, [cancelPendingConnectionCreate]);
+
+    const openBlankContextMenu = useCallback(
+        (clientX: number, clientY: number) => {
+            setSelectedNodeIds(new Set());
+            setSelectedConnectionId(null);
+            setSelectionBox(null);
+            setHoveredNodeId(null);
+            setToolbarNodeId(null);
+            setDialogNodeId(null);
+            setEditingNodeId(null);
+            setContextMenu({ type: "blank", x: clientX, y: clientY, position: screenToCanvas(clientX, clientY) });
+        },
+        [screenToCanvas],
+    );
 
     const clearCanvas = useCallback(() => {
         setNodes([]);
@@ -1928,8 +1942,30 @@ function InfiniteCanvasPage() {
     const preventCanvasContextMenu = useCallback((event: ReactMouseEvent) => {
         if ((event.target as HTMLElement).closest("[data-node-id]")) return;
         event.preventDefault();
-        setContextMenu(null);
-    }, []);
+        openBlankContextMenu(event.clientX, event.clientY);
+    }, [openBlankContextMenu]);
+
+    const handleCanvasDoubleClick = useCallback(
+        (event: ReactMouseEvent<HTMLDivElement>) => {
+            openBlankContextMenu(event.clientX, event.clientY);
+        },
+        [openBlankContextMenu],
+    );
+
+    const handleBlankMenuAction = useCallback(
+        (action: "text" | "image" | "video" | "audio" | "upload" | "asset") => {
+            if (contextMenu?.type !== "blank") return;
+            const position = contextMenu.position;
+            if (action === "text") createNode(CanvasNodeType.Text, position);
+            if (action === "image") createNode(CanvasNodeType.Image, position);
+            if (action === "video") createNode(CanvasNodeType.Video, position);
+            if (action === "audio") createNode(CanvasNodeType.Audio, position);
+            if (action === "upload") handleUploadRequest(undefined, position);
+            if (action === "asset") setAssetPickerOpen(true);
+            setContextMenu(null);
+        },
+        [contextMenu, createNode, handleUploadRequest],
+    );
 
     const handleGenerateNode = useCallback(
         async (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string) => {
@@ -2506,6 +2542,7 @@ function InfiniteCanvasPage() {
                         setContextMenu(null);
                     }}
                     onCanvasMouseDown={handleCanvasMouseDown}
+                    onCanvasDoubleClick={handleCanvasDoubleClick}
                     onCanvasDeselect={deselectCanvas}
                     onContextMenu={preventCanvasContextMenu}
                     onDrop={handleDrop}
@@ -2702,23 +2739,27 @@ function InfiniteCanvasPage() {
                 <CanvasZoomControls scale={viewport.k} onScaleChange={setZoomScale} onReset={resetViewport} isMiniMapOpen={isMiniMapOpen} onToggleMiniMap={() => setIsMiniMapOpen((value) => !value)} />
 
                 {contextMenu ? (
-                    <CanvasNodeContextMenu
-                        menu={contextMenu}
-                        onClose={() => setContextMenu(null)}
-                        onDuplicate={() => {
-                            if (contextMenu.type !== "node") return;
-                            duplicateNode(contextMenu.nodeId);
-                            setContextMenu(null);
-                        }}
-                        onDelete={() => {
-                            if (contextMenu.type === "node") {
-                                deleteNodes(new Set([contextMenu.nodeId]));
-                            } else {
-                                deleteConnection(contextMenu.connectionId);
-                            }
-                            setContextMenu(null);
-                        }}
-                    />
+                    contextMenu.type === "blank" ? (
+                        <CanvasBlankContextMenu x={contextMenu.x} y={contextMenu.y} onClose={() => setContextMenu(null)} onAction={handleBlankMenuAction} />
+                    ) : (
+                        <CanvasNodeContextMenu
+                            menu={contextMenu}
+                            onClose={() => setContextMenu(null)}
+                            onDuplicate={() => {
+                                if (contextMenu.type !== "node") return;
+                                duplicateNode(contextMenu.nodeId);
+                                setContextMenu(null);
+                            }}
+                            onDelete={() => {
+                                if (contextMenu.type === "node") {
+                                    deleteNodes(new Set([contextMenu.nodeId]));
+                                } else {
+                                    deleteConnection(contextMenu.connectionId);
+                                }
+                                setContextMenu(null);
+                            }}
+                        />
+                    )
                 ) : null}
 
                 <input ref={imageInputRef} type="file" accept="image/*,video/*,audio/mpeg,audio/wav,audio/x-wav,.mp3,.wav" className="hidden" onChange={handleImageInputChange} />
@@ -2861,7 +2902,6 @@ function CanvasTopBar({
                         menu={{
                             items: [
                                 { key: "home", icon: <Home className="size-4" />, label: "主页", onClick: onHome },
-                                { key: "docs", icon: <BookOpen className="size-4" />, label: "文档", onClick: () => window.open(DOCS_URL, "_blank", "noopener,noreferrer") },
                                 { key: "projects", icon: <Images className="size-4" />, label: "我的画布", onClick: onProjects },
                                 { type: "divider" },
                                 { key: "new", icon: <Plus className="size-4" />, label: "新建画布", onClick: onCreateProject },
@@ -2908,6 +2948,9 @@ function CanvasTopBar({
 
                 <div className="pointer-events-auto flex items-center gap-1.5">
                     <UserStatusActions
+                        showDocs={false}
+                        showVersion={false}
+                        showGithub={false}
                         variant="canvas"
                         onOpenShortcuts={() => setShortcutsOpen(true)}
                     />

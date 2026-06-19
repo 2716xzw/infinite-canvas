@@ -130,6 +130,12 @@ export type ContextMenuState =
           nodeId: string;
       }
     | {
+          type: "blank";
+          x: number;
+          y: number;
+          position: Position;
+      }
+    | {
           type: "connection";
           x: number;
           y: number;
