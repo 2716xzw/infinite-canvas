@@ -2006,7 +2006,8 @@ function InfiniteCanvasPage() {
         if ((event.target as HTMLElement).closest("[data-node-id]")) return;
         event.preventDefault();
         setContextMenu(null);
-    }, []);
+        setNodeCreatePosition(screenToCanvas(event.clientX, event.clientY));
+    }, [screenToCanvas]);
 
     const handleGenerateNode = useCallback(
         async (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string) => {
