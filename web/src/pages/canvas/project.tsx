@@ -2097,27 +2097,32 @@ function InfiniteCanvasPage() {
                     const parentConfig = NODE_DEFAULT_SIZE[isConfigNode ? CanvasNodeType.Config : isImageNode ? CanvasNodeType.Image : CanvasNodeType.Text];
                     const imageConfig = NODE_DEFAULT_SIZE[CanvasNodeType.Image];
                     const parentPosition = sourceNode?.position || { x: 0, y: 0 };
-                    const rootId = isEmptyImageNode ? nodeId : nanoid();
-                    const imageIds = Array.from({ length: count }, () => nanoid());
-                    pendingChildIds = [rootId];
-                    const rootNode: CanvasNodeData = {
-                        id: rootId,
+                    // --- Independent nodes mode: each image gets its own node & connection ---
+                    const childNodeIds = isEmptyImageNode && count === 1 ? [nodeId] : Array.from({ length: count }, () => nanoid());
+                    pendingChildIds = [...childNodeIds];
+
+                    const baseX = isEmptyImageNode ? parentPosition.x : parentPosition.x + parentConfig.width + 96;
+                    const totalHeight = count * imageConfig.height + (count - 1) * 24;
+                    const startY = parentPosition.y + parentConfig.height / 2 - totalHeight / 2;
+
+                    const childNodes: CanvasNodeData[] = childNodeIds.map((id, index) => ({
+                        id,
                         type: CanvasNodeType.Image,
                         title: effectivePrompt.slice(0, 32) || "Generated Image",
                         position: {
-                            x: isEmptyImageNode ? parentPosition.x : parentPosition.x + parentConfig.width + 96,
-                            y: parentPosition.y + parentConfig.height / 2 - imageConfig.height / 2,
+                            x: isEmptyImageNode && count === 1 ? parentPosition.x : baseX,
+                            y: count === 1 ? parentPosition.y + parentConfig.height / 2 - imageConfig.height / 2 : startY + index * (imageConfig.height + 24),
                         },
-                        width: isEmptyImageNode ? sourceNode?.width || imageConfig.width : imageConfig.width,
-                        height: isEmptyImageNode ? sourceNode?.height || imageConfig.height : imageConfig.height,
+                        width: isEmptyImageNode && count === 1 ? sourceNode?.width || imageConfig.width : imageConfig.width,
+                        height: isEmptyImageNode && count === 1 ? sourceNode?.height || imageConfig.height : imageConfig.height,
                         metadata: {
                             prompt: effectivePrompt,
                             status: NODE_STATUS_LOADING,
-                            images: imageIds.map((id) => ({ id, status: NODE_STATUS_LOADING, content: "", storageKey: "", naturalWidth: 0, naturalHeight: 0, bytes: 0, mimeType: "" })),
                             ...generationMetadata,
                         },
-                    };
+                    }));
 
+                    const isInPlace = isEmptyImageNode && count === 1;
                     setNodes((prev) => [
                         ...prev.map((node) =>
                             node.id === nodeId
@@ -2126,14 +2131,14 @@ function InfiniteCanvasPage() {
                                           ...node,
                                           metadata: { ...node.metadata, status: NODE_STATUS_LOADING, errorDetails: undefined },
                                       }
-                                    : isEmptyImageNode
+                                    : isInPlace
                                       ? {
                                             ...node,
-                                            position: rootNode.position,
-                                            width: rootNode.width,
-                                            height: rootNode.height,
-                                            title: rootNode.title,
-                                            metadata: { ...node.metadata, ...rootNode.metadata, errorDetails: undefined },
+                                            position: childNodes[0].position,
+                                            width: childNodes[0].width,
+                                            height: childNodes[0].height,
+                                            title: childNodes[0].title,
+                                            metadata: { ...node.metadata, ...childNodes[0].metadata, errorDetails: undefined },
                                         }
                                       : isImageNode
                                         ? {
@@ -2150,31 +2155,29 @@ function InfiniteCanvasPage() {
                                           }
                                 : node,
                         ),
-                        ...(isEmptyImageNode ? [] : [rootNode]),
+                        ...(isInPlace ? [] : childNodes),
                     ]);
-                    if (!isEmptyImageNode) setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: nodeId, toNodeId: rootId }]);
+                    if (!isInPlace) setConnections((prev) => [...prev, ...childNodeIds.map((childId) => ({ id: nanoid(), fromNodeId: nodeId, toNodeId: childId }))]);
                     setSelectedNodeIds(new Set([nodeId]));
                     setSelectedConnectionId(null);
                     setDialogNodeId(nodeId);
 
-                    const controller = rootId === nodeId ? runController : startGenerationRequest(rootId, nodeId, nodeId, runController);
+                    const controllers = childNodeIds.map((childId) => (childId === nodeId ? runController : startGenerationRequest(childId, nodeId, nodeId, runController)));
                     let hasSuccess = false;
                     let hasFailure = false;
                     let firstError = "";
                     await Promise.all(
-                        imageIds.map(async (imageId) => {
+                        childNodeIds.map(async (childId, index) => {
+                            const controller = controllers[index];
                             try {
                                 const image = referenceImages.length
                                     ? await requestEdit({ ...generationConfig, count: "1" }, effectivePrompt, referenceImages, undefined, { signal: controller.signal }).then((items) => items[0])
                                     : await requestGeneration({ ...generationConfig, count: "1" }, effectivePrompt, { signal: controller.signal }).then((items) => items[0]);
                                 const uploaded = await uploadImage(image.dataUrl);
                                 const imageSize = fitNodeSize(uploaded.width, uploaded.height, imageConfig.width, imageConfig.height);
-                                const item: CanvasNodeImage = { id: imageId, status: NODE_STATUS_SUCCESS, content: uploaded.url, storageKey: uploaded.storageKey, naturalWidth: uploaded.width, naturalHeight: uploaded.height, bytes: uploaded.bytes, mimeType: uploaded.mimeType };
                                 setNodes((prev) =>
                                     prev.map((node) => {
-                                        if (node.id !== rootId) return node;
-                                        const images = node.metadata?.images?.map((image) => (image.id === imageId ? item : image)) || [];
-                                        if (node.metadata?.primaryImageId) return { ...node, metadata: { ...node.metadata, images } };
+                                        if (node.id !== childId) return node;
                                         const center = { x: node.position.x + node.width / 2, y: node.position.y + node.height / 2 };
                                         return {
                                             ...node,
@@ -2182,14 +2185,13 @@ function InfiniteCanvasPage() {
                                             ...imageSize,
                                             metadata: {
                                                 ...node.metadata,
-                                                content: item.content,
-                                                storageKey: item.storageKey,
-                                                naturalWidth: item.naturalWidth,
-                                                naturalHeight: item.naturalHeight,
-                                                bytes: item.bytes,
-                                                mimeType: item.mimeType,
-                                                images,
-                                                primaryImageId: imageId,
+                                                content: uploaded.url,
+                                                storageKey: uploaded.storageKey,
+                                                naturalWidth: uploaded.width,
+                                                naturalHeight: uploaded.height,
+                                                bytes: uploaded.bytes,
+                                                mimeType: uploaded.mimeType,
+                                                status: NODE_STATUS_SUCCESS,
                                             },
                                         };
                                     }),
@@ -2202,13 +2204,13 @@ function InfiniteCanvasPage() {
                                 const errorDetails = error instanceof Error ? error.message : t("canvas.projectPage.generationFailed");
                                 if (!firstError) firstError = errorDetails;
                                 hasFailure = true;
-                                setNodes((prev) => prev.map((node) => (node.id === rootId ? { ...node, metadata: { ...node.metadata, images: node.metadata?.images?.map((image) => (image.id === imageId ? { ...image, status: NODE_STATUS_ERROR, errorDetails } : image)) } } : node)));
+                                setNodes((prev) => prev.map((node) => (node.id === childId ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_ERROR, errorDetails } } : node)));
                             }
                             return false;
                         }),
                     );
-                    if (rootId !== nodeId) finishGenerationRequest(rootId, controller);
-                    if (controller.signal.aborted) {
+                    childNodeIds.forEach((childId, index) => { if (childId !== nodeId) finishGenerationRequest(childId, controllers[index]); });
+                    if (runController.signal.aborted) {
                         setNodes((prev) => prev.map((node) => (node.id === nodeId && isConfigNode && node.metadata?.status === NODE_STATUS_LOADING ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_IDLE, errorDetails: undefined } } : node)));
                         return;
                     }
@@ -2216,13 +2218,10 @@ function InfiniteCanvasPage() {
                         message.error(hasSuccess ? t("canvas.projectPage.partialFailed") : firstError || t("canvas.projectPage.generationFailed"));
                     }
                     setNodes((prev) =>
-                        prev.map((node) =>
-                            node.id === nodeId && isConfigNode
-                                ? { ...node, metadata: { ...node.metadata, status: hasSuccess ? NODE_STATUS_SUCCESS : NODE_STATUS_ERROR, errorDetails: hasSuccess ? undefined : t("canvas.projectPage.generationFailed") } }
-                                : node.id === rootId
-                                  ? { ...node, metadata: { ...node.metadata, status: hasSuccess ? NODE_STATUS_SUCCESS : NODE_STATUS_ERROR, errorDetails: hasSuccess ? undefined : t("canvas.projectPage.allFailed") } }
-                                    : node,
-                        ),
+                        prev.map((node) => {
+                            if (node.id === nodeId && isConfigNode) return { ...node, metadata: { ...node.metadata, status: hasSuccess ? NODE_STATUS_SUCCESS : NODE_STATUS_ERROR, errorDetails: hasSuccess ? undefined : t("canvas.projectPage.generationFailed") } };
+                            return node;
+                        }),
                     );
                     return;
                 }
