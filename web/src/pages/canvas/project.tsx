@@ -205,7 +205,7 @@ function InfiniteCanvasPage() {
     const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
     const [manualTool, setManualTool] = useState<"select" | "pan" | null>(null);
     const hasSelection = selectedNodeIds.size > 0;
-    const canvasTool = hasSelection ? (manualTool ?? "select") : "pan";
+    const canvasTool = manualTool ?? (hasSelection ? "select" : "pan");
     const toggleCanvasTool = useCallback(() => {
         setManualTool((prev) => {
             const current = prev ?? (hasSelection ? "select" : "pan");
@@ -213,13 +213,6 @@ function InfiniteCanvasPage() {
         });
     }, [hasSelection]);
 
-    const prevSelectedIdsRef = useRef<Set<string>>(new Set());
-    useEffect(() => {
-        if (prevSelectedIdsRef.current !== selectedNodeIds && manualTool !== null) {
-            setManualTool(null);
-        }
-        prevSelectedIdsRef.current = selectedNodeIds;
-    }, [selectedNodeIds, manualTool]);
     const [connectingParams, setConnectingParams] = useState<ConnectionHandle | null>(null);
     const [connectionTargetNodeId, setConnectionTargetNodeId] = useState<string | null>(null);
     const [pendingConnectionCreate, setPendingConnectionCreate] = useState<PendingConnectionCreate | null>(null);
