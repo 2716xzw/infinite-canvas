@@ -2,6 +2,7 @@
 
 ## Unreleased
 
++ [修复] 明确 Vercel 使用 Vite 框架构建，避免被误识别为 Next.js 导致部署失败。
 + [修复] 统一 Ant Design 依赖版本，修复 Vercel 部署时 npm peer dependency 冲突。
 + [修复] 修复 Vercel 直达画布链接返回 404，以及节点调整尺寸时缩放比例变化导致位置跳动。
 + [新增] 画布空白处右键弹出创建节点菜单，可快速新建文本、图片、视频、音频等节点。
