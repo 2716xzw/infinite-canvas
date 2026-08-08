@@ -205,13 +205,19 @@ function InfiniteCanvasPage() {
     const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
     const [manualTool, setManualTool] = useState<"select" | "pan" | null>(null);
     const hasSelection = selectedNodeIds.size > 0;
-    const canvasTool = manualTool ?? (hasSelection ? "select" : "pan");
+    const canvasTool = hasSelection ? (manualTool ?? "select") : "pan";
     const toggleCanvasTool = useCallback(() => {
+        if (!hasSelection) return;
         setManualTool((prev) => {
             const current = prev ?? (hasSelection ? "select" : "pan");
             return current === "select" ? "pan" : "select";
         });
     }, [hasSelection]);
+
+    const selectionKey = useMemo(() => Array.from(selectedNodeIds).sort().join("|"), [selectedNodeIds]);
+    useEffect(() => {
+        setManualTool(null);
+    }, [selectionKey]);
 
     const [connectingParams, setConnectingParams] = useState<ConnectionHandle | null>(null);
     const [connectionTargetNodeId, setConnectionTargetNodeId] = useState<string | null>(null);
@@ -2231,7 +2237,7 @@ function InfiniteCanvasPage() {
                     }
                     setNodes((prev) =>
                         prev.map((node) => {
-                            if (node.id === nodeId && isConfigNode) return { ...node, metadata: { ...node.metadata, status: hasSuccess ? NODE_STATUS_SUCCESS : NODE_STATUS_ERROR, errorDetails: hasSuccess ? undefined : t("canvas.projectPage.generationFailed") } };
+                            if (node.id === nodeId && isConfigNode) return { ...node, metadata: { ...node.metadata, status: hasSuccess ? NODE_STATUS_SUCCESS : NODE_STATUS_ERROR, errorDetails: hasSuccess ? undefined : firstError || t("canvas.projectPage.generationFailed") } };
                             return node;
                         }),
                     );

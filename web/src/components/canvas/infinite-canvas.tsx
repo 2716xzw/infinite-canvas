@@ -215,6 +215,7 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
             onPointerDown={handlePointerDown}
             onDoubleClick={handleDoubleClick}
             onWheel={handleWheel}
+            onAuxClick={(event) => event.preventDefault()}
             onContextMenu={onContextMenu}
             onDragOver={(event) => event.preventDefault()}
             onDrop={onDrop}
