@@ -113,7 +113,9 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
         const isBackgroundClick = !target?.closest("[data-node-id],[data-connection-id]");
         const temporaryTool = event.ctrlKey || isSpacePressed;
         const activeTool = temporaryTool ? (tool === "select" ? "pan" : "select") : tool;
-        const shouldPan = event.button === 1 || (event.button === 0 && activeTool === "pan");
+        // In move mode, keep node clicks available for selection, configuration, and resize.
+        // A left-button drag pans only when it starts on the canvas background; middle-button always pans.
+        const shouldPan = event.button === 1 || (event.button === 0 && activeTool === "pan" && isBackgroundClick);
 
         if (shouldPan) {
             event.preventDefault();

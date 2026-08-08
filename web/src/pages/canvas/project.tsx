@@ -1051,6 +1051,7 @@ function InfiniteCanvasPage() {
     );
 
     const handleNodeMouseDown = useCallback((event: ReactMouseEvent, nodeId: string) => {
+        if (event.button !== 0) return;
         event.stopPropagation();
         // Capture already selected the node; this only starts dragging, with a fallback selection if capture did not run.
         const currentNodes = nodesRef.current;
