@@ -157,6 +157,11 @@ export const CanvasNode = React.memo(function CanvasNode({
         keepRatio: false,
         ratio: 1,
     });
+    const scaleRef = useRef(scale);
+
+    useEffect(() => {
+        scaleRef.current = Number.isFinite(scale) ? Math.max(scale, 0.05) : 1;
+    }, [scale]);
 
     useEffect(() => {
         setTitleDraft(data.title || "");
@@ -226,8 +231,9 @@ export const CanvasNode = React.memo(function CanvasNode({
         (event: MouseEvent) => {
             if (!resizeRef.current.isResizing) return;
 
-            const dx = (event.clientX - resizeRef.current.startX) / scale;
-            const dy = (event.clientY - resizeRef.current.startY) / scale;
+            const currentScale = scaleRef.current;
+            const dx = (event.clientX - resizeRef.current.startX) / currentScale;
+            const dy = (event.clientY - resizeRef.current.startY) / currentScale;
             const minWidth = 220;
             const minHeight = 160;
             const startRight = resizeRef.current.startLeft + resizeRef.current.startWidth;
@@ -262,7 +268,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                 y: fromTop ? startBottom - height : resizeRef.current.startTop,
             });
         },
-        [data.id, onResize, scale],
+        [data.id, onResize],
     );
 
     const handleResizeUp = useCallback(() => {

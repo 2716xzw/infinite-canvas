@@ -199,11 +199,27 @@ function InfiniteCanvasPage() {
     const [chatSessions, setChatSessions] = useState<CanvasAssistantSession[]>([]);
     const [activeChatId, setActiveChatId] = useState<string | null>(null);
     const [viewport, setViewport] = useState<ViewportTransform>({ x: 0, y: 0, k: 1 });
-    const [canvasTool, setCanvasTool] = useState<"select" | "pan">("select");
     const [size, setSize] = useState({ width: 1200, height: 720 });
     const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
     const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
     const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+    const [manualTool, setManualTool] = useState<"select" | "pan" | null>(null);
+    const hasSelection = selectedNodeIds.size > 0;
+    const canvasTool = hasSelection ? (manualTool ?? "select") : "pan";
+    const toggleCanvasTool = useCallback(() => {
+        setManualTool((prev) => {
+            const current = prev ?? (hasSelection ? "select" : "pan");
+            return current === "select" ? "pan" : "select";
+        });
+    }, [hasSelection]);
+
+    const prevSelectedIdsRef = useRef<Set<string>>(new Set());
+    useEffect(() => {
+        if (prevSelectedIdsRef.current !== selectedNodeIds && manualTool !== null) {
+            setManualTool(null);
+        }
+        prevSelectedIdsRef.current = selectedNodeIds;
+    }, [selectedNodeIds, manualTool]);
     const [connectingParams, setConnectingParams] = useState<ConnectionHandle | null>(null);
     const [connectionTargetNodeId, setConnectionTargetNodeId] = useState<string | null>(null);
     const [pendingConnectionCreate, setPendingConnectionCreate] = useState<PendingConnectionCreate | null>(null);
@@ -2944,7 +2960,7 @@ function InfiniteCanvasPage() {
                     onUpload={() => handleUploadRequest()}
                     onDelete={() => deleteNodes(new Set(selectedNodeIds))}
                     onClear={() => setClearConfirmOpen(true)}
-                    onCanvasToolChange={setCanvasTool}
+                    onCanvasToolChange={toggleCanvasTool}
                     onBackgroundModeChange={setBackgroundMode}
                     onShowImageInfoChange={setShowImageInfo}
                 />
