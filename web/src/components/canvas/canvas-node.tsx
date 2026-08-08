@@ -253,6 +253,8 @@ export const CanvasNode = React.memo(function CanvasNode({
                     width = minWidth;
                     height = width / ratio;
                 }
+                if (!Number.isFinite(width) || width <= 0) width = minWidth;
+                if (!Number.isFinite(height) || height <= 0) height = minHeight;
             }
 
             onResize(data.id, width, height, {
@@ -284,7 +286,12 @@ export const CanvasNode = React.memo(function CanvasNode({
             startWidth: data.width,
             startHeight: data.height,
             keepRatio: (data.type === CanvasNodeType.Image && !data.metadata?.freeResize) || data.type === CanvasNodeType.Video || Boolean(definition?.keepAspectRatio?.(data)),
-            ratio: (data.metadata?.naturalWidth || data.width) / (data.metadata?.naturalHeight || data.height || 1),
+            ratio: (() => {
+                const nw = data.metadata?.naturalWidth || data.width || 1;
+                const nh = data.metadata?.naturalHeight || data.height || 1;
+                const r = nw / nh;
+                return Number.isFinite(r) && r > 0 ? r : 1;
+            })(),
         };
         window.addEventListener("mousemove", handleResizeMove);
         window.addEventListener("mouseup", handleResizeUp);

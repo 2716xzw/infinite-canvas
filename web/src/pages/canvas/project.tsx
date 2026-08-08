@@ -1437,8 +1437,11 @@ function InfiniteCanvasPage() {
                 if (node.id !== nodeId) return node;
                 const freeResize = !node.metadata?.freeResize;
                 if (freeResize || node.type !== CanvasNodeType.Image) return { ...node, metadata: { ...node.metadata, freeResize } };
-                const ratio = (node.metadata?.naturalWidth || node.width) / (node.metadata?.naturalHeight || node.height || 1);
-                const height = node.width / ratio;
+                const nw = node.metadata?.naturalWidth || node.width || 1;
+                const nh = node.metadata?.naturalHeight || node.height || 1;
+                const ratio = nw / nh;
+                const safeRatio = Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
+                const height = node.width / safeRatio;
                 return { ...node, height, position: { x: node.position.x, y: node.position.y + node.height / 2 - height / 2 }, metadata: { ...node.metadata, freeResize } };
             }),
         );
