@@ -32,15 +32,18 @@ export const videoSecondOptions = secondOptions.map((value) => String(value));
 
 type VideoSettingsPanelProps = {
     config: AiConfig;
+    model?: string;
     onConfigChange: (key: "vquality" | "size" | "videoSeconds" | "videoGenerateAudio" | "videoWatermark", value: string) => void;
     theme: CanvasTheme;
     showTitle?: boolean;
     className?: string;
 };
 
-export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = true, className = "w-[320px] space-y-4 rounded-2xl px-1 py-0.5" }: VideoSettingsPanelProps) {
+export function VideoSettingsPanel({ config, model, onConfigChange, theme, showTitle = true, className = "w-[320px] space-y-4 rounded-2xl px-1 py-0.5" }: VideoSettingsPanelProps) {
     const { t } = useTranslation();
-    const isMinimaxH3 = isMinimaxH3Model(config.videoModel || config.model);
+    const activeModel = model || config.model || config.videoModel;
+    const activeConfig = activeModel === config.model ? config : { ...config, model: activeModel, videoModel: activeModel };
+    const isMinimaxH3 = isMinimaxH3Model(activeModel);
     const minimaxH3Resolution = normalizeMinimaxH3Resolution(config.vquality);
 
     useEffect(() => {
@@ -49,8 +52,8 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
         }
     }, [config.vquality, isMinimaxH3, minimaxH3Resolution, onConfigChange]);
 
-    if (isSeedanceVideoConfig(config)) {
-        return <SeedanceVideoSettingsPanel config={config} onConfigChange={onConfigChange} theme={theme} showTitle={showTitle} className={className} />;
+    if (!isMinimaxH3 && isSeedanceVideoConfig(activeConfig)) {
+        return <SeedanceVideoSettingsPanel config={activeConfig} onConfigChange={onConfigChange} theme={theme} showTitle={showTitle} className={className} />;
     }
 
     const seconds = config.videoSeconds || "6";
