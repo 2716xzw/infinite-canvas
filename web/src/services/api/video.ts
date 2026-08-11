@@ -186,14 +186,14 @@ async function createSeedanceTask(config: AiConfig, model: string, prompt: strin
     assertSeedanceAudioReferences(audioReferences);
     const content = await buildSeedanceContent(config, prompt, references, videoReferences, audioReferences);
     if (!content.length) throw new Error(apiText("videoPromptRequired"));
+    const minimaxH3 = isMinimaxH3Model(model);
     const payload = {
         model: modelOptionName(model),
         content,
-        ratio: normalizeSeedanceRatio(config.size),
-        resolution: normalizeSeedanceResolution(config.vquality),
-        duration: normalizeSeedanceDuration(config.videoSeconds),
-        generate_audio: boolConfig(config.videoGenerateAudio, true),
-        watermark: boolConfig(config.videoWatermark, false),
+        ratio: minimaxH3 ? minimaxH3Ratio(config.size) : normalizeSeedanceRatio(config.size),
+        resolution: minimaxH3 ? normalizeMinimaxH3Resolution(config.vquality) : normalizeSeedanceResolution(config.vquality),
+        duration: minimaxH3 ? Number(normalizeMinimaxH3Duration(config.videoSeconds)) : normalizeSeedanceDuration(config.videoSeconds),
+        ...(!minimaxH3 ? { generate_audio: boolConfig(config.videoGenerateAudio, true), watermark: boolConfig(config.videoWatermark, false) } : {}),
     };
 
     try {

@@ -7,7 +7,7 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
-- MiniMax H3 video parameters: selecting the model should fix resolution to 1440P, offer only the six supported ratios and 5–15 second durations, then submit `resolution`, `ratio`, and `duration` without also submitting the mutually exclusive `size` parameter.
+- MiniMax H3 video parameters: selecting the model should fix resolution to 1440P, offer only the six supported ratios and 5–15 second durations, then submit those H3 values through both OpenAI-compatible and Ark task channels as `resolution`, `ratio`, and `duration`, without also submitting `size` or the Seedance-only `generate_audio` and `watermark` parameters; Seedance models should retain their existing parameters.
 - Video polling error details: task responses wrapped as `{ data: task, fail_reason }` without a top-level `code` should be unwrapped correctly, and failures should display the provider's `fail_reason` or nested `data.error.message` instead of a generic generation error.
 - Canvas generation configuration memory: after changing image quality, size, count, or background, newly added Image and Config nodes should reuse those image settings; after changing video resolution, ratio/size, duration, audio, or watermark, newly added Video nodes and Config nodes switched to Video should reuse those video settings independently across page refreshes.
 - Vercel deployment: installation should complete without an npm peer-dependency error, and the production build should start normally.
