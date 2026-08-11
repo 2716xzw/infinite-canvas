@@ -6,7 +6,7 @@ import { dataUrlToFile } from "@/lib/image-utils";
 import { getMediaBlob, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { imageToDataUrl } from "@/services/image-storage";
 import { boolConfig, buildSeedancePromptText, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceVideoReferenceError, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
-import { isMinimaxH3Model, normalizeMinimaxH3Resolution } from "@/lib/minimax-h3-video";
+import { isMinimaxH3Model, minimaxH3Ratio, normalizeMinimaxH3Duration, normalizeMinimaxH3Resolution } from "@/lib/minimax-h3-video";
 import { buildApiUrl, modelOptionName, resolveModelRequestConfig, resolveModelScript, type AiConfig } from "@/stores/use-config-store";
 import { runModelPlugin } from "./model-plugin";
 import type { ReferenceImage } from "@/types/image";
@@ -85,6 +85,7 @@ export async function pollVideoGenerationTask(config: AiConfig, task: VideoGener
 async function createPluginVideoTask(config: AiConfig, model: string, script: string, prompt: string, references: ReferenceImage[], options?: RequestOptions): Promise<VideoGenerationTask> {
     if (!config.baseUrl.trim()) throw new Error(apiText("baseUrlRequired"));
     if (!config.apiKey.trim()) throw new Error(apiText("apiKeyRequired"));
+    const minimaxH3 = isMinimaxH3Model(model);
     const refs = await Promise.all(references.map((image) => imageToDataUrl(image)));
     const result = videoPluginResult(
         await runModelPlugin({
@@ -94,10 +95,10 @@ async function createPluginVideoTask(config: AiConfig, model: string, script: st
             prompt,
             images: refs,
             params: {
-                seconds: normalizeVideoSeconds(config.videoSeconds),
-                size: normalizeVideoSize(config.size),
-                resolution: isMinimaxH3Model(model) ? normalizeMinimaxH3Resolution(config.vquality) : normalizeVideoResolution(config.vquality),
-                ratio: config.size,
+                ...(minimaxH3 ? { duration: normalizeMinimaxH3Duration(config.videoSeconds) } : { seconds: normalizeVideoSeconds(config.videoSeconds) }),
+                ...(!minimaxH3 ? { size: normalizeVideoSize(config.size) } : {}),
+                resolution: minimaxH3 ? normalizeMinimaxH3Resolution(config.vquality) : normalizeVideoResolution(config.vquality),
+                ratio: minimaxH3 ? minimaxH3Ratio(config.size) : config.size,
                 generateAudio: boolConfig(config.videoGenerateAudio, true),
                 watermark: boolConfig(config.videoWatermark, false),
             },
@@ -138,10 +139,12 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
     const minimaxH3 = isMinimaxH3Model(model);
     body.append("model", modelOptionName(model));
     body.append("prompt", prompt);
-    body.append("seconds", normalizeVideoSeconds(config.videoSeconds));
+    if (!minimaxH3) body.append("seconds", normalizeVideoSeconds(config.videoSeconds));
     if (!minimaxH3 && normalizeVideoSize(config.size)) body.append("size", normalizeVideoSize(config.size)!);
     if (minimaxH3) {
         body.append("resolution", normalizeMinimaxH3Resolution(config.vquality));
+        body.append("ratio", minimaxH3Ratio(config.size));
+        body.append("duration", normalizeMinimaxH3Duration(config.videoSeconds));
     } else {
         body.append("resolution_name", normalizeVideoResolution(config.vquality));
     }

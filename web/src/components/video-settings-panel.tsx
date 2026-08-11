@@ -6,7 +6,7 @@ import i18n from "@/i18n";
 import { ImageSettingsTheme } from "@/components/image-settings-panel";
 import { boolConfig, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceDurationOptions, seedancePixelLabel, seedanceRatioOptions, seedanceResolutionOptions } from "@/lib/seedance-video";
 import { type CanvasTheme } from "@/lib/canvas-theme";
-import { isMinimaxH3Model, minimaxH3ResolutionOptions, normalizeMinimaxH3Resolution } from "@/lib/minimax-h3-video";
+import { isMinimaxH3Model, minimaxH3Resolution, minimaxH3SizeOptions, normalizeMinimaxH3Duration, normalizeMinimaxH3Size } from "@/lib/minimax-h3-video";
 import { type AiConfig } from "@/stores/use-config-store";
 
 const resolutionOptions = [
@@ -44,16 +44,22 @@ export function VideoSettingsPanel({ config, model, onConfigChange, theme, showT
     const activeModel = model || config.model || config.videoModel;
     const activeConfig = activeModel === config.model ? config : { ...config, model: activeModel, videoModel: activeModel };
     const isMinimaxH3 = isMinimaxH3Model(activeModel);
-    const minimaxH3Resolution = normalizeMinimaxH3Resolution(config.vquality);
+    const h3Size = normalizeMinimaxH3Size(config.size);
+    const h3Duration = normalizeMinimaxH3Duration(config.videoSeconds);
 
     useEffect(() => {
-        if (isMinimaxH3 && config.vquality !== minimaxH3Resolution) {
-            onConfigChange("vquality", minimaxH3Resolution);
-        }
-    }, [config.vquality, isMinimaxH3, minimaxH3Resolution, onConfigChange]);
+        if (!isMinimaxH3) return;
+        if (config.vquality !== minimaxH3Resolution) onConfigChange("vquality", minimaxH3Resolution);
+        if (config.size !== h3Size) onConfigChange("size", h3Size);
+        if (config.videoSeconds !== h3Duration) onConfigChange("videoSeconds", h3Duration);
+    }, [config.size, config.videoSeconds, config.vquality, h3Duration, h3Size, isMinimaxH3, onConfigChange]);
 
     if (!isMinimaxH3 && isSeedanceVideoConfig(activeConfig)) {
         return <SeedanceVideoSettingsPanel config={activeConfig} onConfigChange={onConfigChange} theme={theme} showTitle={showTitle} className={className} />;
+    }
+
+    if (isMinimaxH3) {
+        return <MinimaxH3VideoSettingsPanel config={config} onConfigChange={onConfigChange} theme={theme} showTitle={showTitle} className={className} />;
     }
 
     const seconds = config.videoSeconds || "6";
@@ -70,19 +76,13 @@ export function VideoSettingsPanel({ config, model, onConfigChange, theme, showT
             <div className={className} style={{ color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()}>
                 {showTitle ? <div className="text-lg font-semibold">{t("settingsPanels.video.title")}</div> : null}
                 <SettingGroup title={t("settingsPanels.video.quality")} color={theme.node.muted}>
-                    <div className={`grid gap-2.5 ${isMinimaxH3 ? "grid-cols-2" : "grid-cols-3"}`}>
-                        {isMinimaxH3
-                            ? minimaxH3ResolutionOptions.map((value) => (
-                                  <OptionPill key={value} selected={minimaxH3Resolution === value} theme={theme} onClick={() => onConfigChange("vquality", value)}>
-                                      {value.toLowerCase()}
-                                  </OptionPill>
-                              ))
-                            : resolutionOptions.map((item) => (
-                                  <OptionPill key={item.value} selected={resolution === item.value} theme={theme} onClick={() => onConfigChange("vquality", item.value)}>
-                                      {item.label}
-                                  </OptionPill>
-                              ))}
-                        {isMinimaxH3 ? null : <ResolutionInput value={resolution} theme={theme} onChange={(value) => onConfigChange("vquality", value)} />}
+                    <div className="grid grid-cols-3 gap-2.5">
+                        {resolutionOptions.map((item) => (
+                            <OptionPill key={item.value} selected={resolution === item.value} theme={theme} onClick={() => onConfigChange("vquality", item.value)}>
+                                {item.label}
+                            </OptionPill>
+                        ))}
+                        <ResolutionInput value={resolution} theme={theme} onChange={(value) => onConfigChange("vquality", value)} />
                     </div>
                 </SettingGroup>
                 <SettingGroup title={t("settingsPanels.video.size")} color={theme.node.muted}>
@@ -120,6 +120,45 @@ export function VideoSettingsPanel({ config, model, onConfigChange, theme, showT
                             </OptionPill>
                         ))}
                         <NumberInput value={seconds} min={1} max={20} theme={theme} onChange={(value) => onConfigChange("videoSeconds", value)} />
+                    </div>
+                </SettingGroup>
+            </div>
+        </ImageSettingsTheme>
+    );
+}
+
+function MinimaxH3VideoSettingsPanel({ config, onConfigChange, theme, showTitle, className }: VideoSettingsPanelProps) {
+    const { t } = useTranslation();
+    const size = normalizeMinimaxH3Size(config.size);
+    const duration = normalizeMinimaxH3Duration(config.videoSeconds);
+
+    return (
+        <ImageSettingsTheme theme={theme}>
+            <div className={className} style={{ color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()}>
+                {showTitle ? <div className="text-lg font-semibold">{t("settingsPanels.video.title")}</div> : null}
+                <SettingGroup title={t("settingsPanels.video.resolution")} color={theme.node.muted}>
+                    <div className="grid grid-cols-1 gap-2.5">
+                        <OptionPill selected theme={theme} onClick={() => onConfigChange("vquality", minimaxH3Resolution)}>{minimaxH3Resolution.toLowerCase()}</OptionPill>
+                    </div>
+                </SettingGroup>
+                <SettingGroup title={t("settingsPanels.video.size")} color={theme.node.muted}>
+                    <div className="grid grid-cols-3 gap-2.5">
+                        {minimaxH3SizeOptions.map((item) => {
+                            const dimensions = readSizeDimensions(item.size);
+                            return (
+                                <button key={item.size} type="button" className="flex h-[78px] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border bg-transparent text-sm transition hover:opacity-80" style={{ borderColor: size === item.size ? theme.node.text : theme.node.stroke, color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()} onClick={() => onConfigChange("size", item.size)}>
+                                    <SizePreview width={dimensions.width} height={dimensions.height} color={theme.node.text} />
+                                    <span>{item.ratio}</span>
+                                    <span className="text-[10px] leading-none opacity-55">{item.size}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </SettingGroup>
+                <SettingGroup title={t("settingsPanels.video.duration")} color={theme.node.muted}>
+                    <div className="grid grid-cols-3 gap-2.5">
+                        {[5, 6, 10, 12, 15].map((value) => <OptionPill key={value} selected={duration === String(value)} theme={theme} onClick={() => onConfigChange("videoSeconds", String(value))}>{value}s</OptionPill>)}
+                        <NumberInput value={duration} min={5} max={15} theme={theme} onChange={(value) => onConfigChange("videoSeconds", normalizeMinimaxH3Duration(value))} />
                     </div>
                 </SettingGroup>
             </div>
