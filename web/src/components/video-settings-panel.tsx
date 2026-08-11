@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { Switch } from "antd";
 import { useTranslation } from "react-i18next";
 
@@ -6,6 +6,7 @@ import i18n from "@/i18n";
 import { ImageSettingsTheme } from "@/components/image-settings-panel";
 import { boolConfig, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceDurationOptions, seedancePixelLabel, seedanceRatioOptions, seedanceResolutionOptions } from "@/lib/seedance-video";
 import { type CanvasTheme } from "@/lib/canvas-theme";
+import { isMinimaxH3Model, minimaxH3ResolutionOptions, normalizeMinimaxH3Resolution } from "@/lib/minimax-h3-video";
 import { type AiConfig } from "@/stores/use-config-store";
 
 const resolutionOptions = [
@@ -39,6 +40,15 @@ type VideoSettingsPanelProps = {
 
 export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = true, className = "w-[320px] space-y-4 rounded-2xl px-1 py-0.5" }: VideoSettingsPanelProps) {
     const { t } = useTranslation();
+    const isMinimaxH3 = isMinimaxH3Model(config.videoModel || config.model);
+    const minimaxH3Resolution = normalizeMinimaxH3Resolution(config.vquality);
+
+    useEffect(() => {
+        if (isMinimaxH3 && config.vquality !== minimaxH3Resolution) {
+            onConfigChange("vquality", minimaxH3Resolution);
+        }
+    }, [config.vquality, isMinimaxH3, minimaxH3Resolution, onConfigChange]);
+
     if (isSeedanceVideoConfig(config)) {
         return <SeedanceVideoSettingsPanel config={config} onConfigChange={onConfigChange} theme={theme} showTitle={showTitle} className={className} />;
     }
@@ -57,13 +67,19 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
             <div className={className} style={{ color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()}>
                 {showTitle ? <div className="text-lg font-semibold">{t("settingsPanels.video.title")}</div> : null}
                 <SettingGroup title={t("settingsPanels.video.quality")} color={theme.node.muted}>
-                    <div className="grid grid-cols-3 gap-2.5">
-                        {resolutionOptions.map((item) => (
-                            <OptionPill key={item.value} selected={resolution === item.value} theme={theme} onClick={() => onConfigChange("vquality", item.value)}>
-                                {item.label}
-                            </OptionPill>
-                        ))}
-                        <ResolutionInput value={resolution} theme={theme} onChange={(value) => onConfigChange("vquality", value)} />
+                    <div className={`grid gap-2.5 ${isMinimaxH3 ? "grid-cols-2" : "grid-cols-3"}`}>
+                        {isMinimaxH3
+                            ? minimaxH3ResolutionOptions.map((value) => (
+                                  <OptionPill key={value} selected={minimaxH3Resolution === value} theme={theme} onClick={() => onConfigChange("vquality", value)}>
+                                      {value.toLowerCase()}
+                                  </OptionPill>
+                              ))
+                            : resolutionOptions.map((item) => (
+                                  <OptionPill key={item.value} selected={resolution === item.value} theme={theme} onClick={() => onConfigChange("vquality", item.value)}>
+                                      {item.label}
+                                  </OptionPill>
+                              ))}
+                        {isMinimaxH3 ? null : <ResolutionInput value={resolution} theme={theme} onChange={(value) => onConfigChange("vquality", value)} />}
                     </div>
                 </SettingGroup>
                 <SettingGroup title={t("settingsPanels.video.size")} color={theme.node.muted}>

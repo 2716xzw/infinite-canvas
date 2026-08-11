@@ -6,6 +6,7 @@ import { dataUrlToFile } from "@/lib/image-utils";
 import { getMediaBlob, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { imageToDataUrl } from "@/services/image-storage";
 import { boolConfig, buildSeedancePromptText, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceVideoReferenceError, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
+import { isMinimaxH3Model, normalizeMinimaxH3Resolution } from "@/lib/minimax-h3-video";
 import { buildApiUrl, modelOptionName, resolveModelRequestConfig, resolveModelScript, type AiConfig } from "@/stores/use-config-store";
 import { runModelPlugin } from "./model-plugin";
 import type { ReferenceImage } from "@/types/image";
@@ -95,7 +96,7 @@ async function createPluginVideoTask(config: AiConfig, model: string, script: st
             params: {
                 seconds: normalizeVideoSeconds(config.videoSeconds),
                 size: normalizeVideoSize(config.size),
-                resolution: normalizeVideoResolution(config.vquality),
+                resolution: isMinimaxH3Model(model) ? normalizeMinimaxH3Resolution(config.vquality) : normalizeVideoResolution(config.vquality),
                 ratio: config.size,
                 generateAudio: boolConfig(config.videoGenerateAudio, true),
                 watermark: boolConfig(config.videoWatermark, false),
@@ -134,11 +135,16 @@ export async function storeGeneratedVideo(result: VideoGenerationResult): Promis
 
 async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: string, references: ReferenceImage[], options?: RequestOptions): Promise<VideoGenerationTask> {
     const body = new FormData();
+    const minimaxH3 = isMinimaxH3Model(model);
     body.append("model", modelOptionName(model));
     body.append("prompt", prompt);
     body.append("seconds", normalizeVideoSeconds(config.videoSeconds));
-    if (normalizeVideoSize(config.size)) body.append("size", normalizeVideoSize(config.size)!);
-    body.append("resolution_name", normalizeVideoResolution(config.vquality));
+    if (!minimaxH3 && normalizeVideoSize(config.size)) body.append("size", normalizeVideoSize(config.size)!);
+    if (minimaxH3) {
+        body.append("resolution", normalizeMinimaxH3Resolution(config.vquality));
+    } else {
+        body.append("resolution_name", normalizeVideoResolution(config.vquality));
+    }
     body.append("preset", "normal");
     const files = await Promise.all(references.slice(0, 7).map(async (image) => dataUrlToFile({ ...image, dataUrl: await imageToDataUrl(image) })));
     files.forEach((file) => body.append("input_reference[]", file));
