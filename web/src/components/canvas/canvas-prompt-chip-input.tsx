@@ -18,6 +18,7 @@ type Props = {
     className?: string;
     style?: CSSProperties;
     placeholder?: string;
+    maxLength?: number;
 };
 
 type MentionState = {
@@ -31,7 +32,7 @@ type Token =
 
 // Prompt-panel contentEditable input: @ references embed thumbnail chips instead of plain label text.
 // Serialization converts chips back to reference labels so the generated value matches the former textarea semantics.
-export function CanvasPromptChipInput({ value, references, onChange, onSubmit, className, style, placeholder }: Props) {
+export function CanvasPromptChipInput({ value, references, onChange, onSubmit, className, style, placeholder, maxLength }: Props) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const editorRef = useRef<HTMLDivElement>(null);
     const composingRef = useRef(false);
@@ -81,7 +82,13 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
     const syncFromEditor = () => {
         const editor = editorRef.current;
         if (!editor) return;
-        emit(serializeEditor(editor));
+        const serialized = serializeEditor(editor);
+        const next = maxLength ? serialized.slice(0, maxLength) : serialized;
+        if (next !== serialized) {
+            editor.textContent = next;
+            placeCaretAtEnd(editor);
+        }
+        emit(next);
         syncMention();
     };
 
@@ -139,7 +146,7 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
                 suppressContentEditableWarning
                 role="textbox"
                 aria-multiline="true"
-                className={`${className || ""} overflow-y-auto whitespace-pre-wrap break-words outline-none`}
+                className={`${className || ""} overflow-y-auto whitespace-pre-wrap break-words outline-none ${maxLength ? "pb-7" : ""}`}
                 style={{ ...style, cursor: "text" }}
                 onInput={() => {
                     if (!composingRef.current) syncFromEditor();
@@ -190,6 +197,11 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
                 }}
                 onBlur={() => window.setTimeout(closeMention, 120)}
             />
+            {maxLength ? (
+                <div className="pointer-events-none absolute bottom-2 right-3 text-[11px] tabular-nums opacity-50" style={{ color: theme.node.text }}>
+                    {value.length}/{maxLength}
+                </div>
+            ) : null}
             {mention && candidates.length ? (
                 <MentionMenu rect={mention.rect} references={candidates} activeIndex={Math.min(activeIndex, candidates.length - 1)} theme={theme} onSelect={insertReference} />
             ) : null}
