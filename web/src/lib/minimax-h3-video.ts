@@ -28,5 +28,5 @@ export function minimaxH3Ratio(value: string | undefined) {
 
 export function normalizeMinimaxH3Duration(value: string | undefined) {
     const duration = Math.floor(Number(value) || 6);
-    return String(Math.max(5, Math.min(15, duration)));
+    return String(Math.max(5, Math.min(30, duration)));
 }
