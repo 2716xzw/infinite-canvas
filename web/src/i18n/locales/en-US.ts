@@ -255,7 +255,8 @@ export default {
             fromNode: "Generate from this node", close: "Close", text: "Generate text", textDescription: "Scripts, ad copy, and brand content", image: "Generate image", video: "Generate video", audio: "Audio reference", config: "Configuration node", configDescription: "Model, size, count, and input order", select: "Select a node",
         },
         node: {
-            taskId: "Task {{id}}",
+            taskId: "task_id: {{id}}",
+            refreshTask: "Refresh",
             refreshTaskStatus: "Refresh task status",
             node: "Node",
             untitled: "Untitled node", renameHint: "Double-click to rename the node", group: "Group", nodeCount: "{{count}} nodes", generating: "Generating", failed: "Generation failed", retry: "Retry", missingPlugin: "Plugin missing", missingPluginDescription: "The plugin for node type “{{type}}” is not installed or enabled", generateImage: "Generate image from text", generate: "Generate", editText: "Double-click to edit text", emptyImage: "Empty image node", emptyVideo: "Empty video node", emptyAudio: "Empty audio node", audio: "Audio", batchExpanded: "Image group expanded", batchCollapsed: "Image group collapsed", createCopy: "Create copy", setPrimary: "Set as primary",

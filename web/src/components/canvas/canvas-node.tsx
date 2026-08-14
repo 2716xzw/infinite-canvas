@@ -369,11 +369,12 @@ export const CanvasNode = React.memo(function CanvasNode({
                     )}
                     {data.metadata?.taskId ? (
                         <>
-                            <span className="max-w-40 truncate font-mono text-[10px] opacity-55" style={{ color: theme.node.text }} title={data.metadata.taskId}>
+                            <span className="max-w-48 shrink-0 truncate font-mono text-[10px] opacity-65" style={{ color: theme.node.text }} title={data.metadata.taskId}>
                                 {t("canvas.node.taskId", { id: data.metadata.taskId })}
                             </span>
-                            <button type="button" className="grid size-6 shrink-0 place-items-center bg-transparent opacity-60 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10" style={{ color: theme.node.text }} title={t("canvas.node.refreshTaskStatus")} aria-label={t("canvas.node.refreshTaskStatus")} onClick={(event) => (event.stopPropagation(), onRefreshTask?.(data))}>
+                            <button type="button" className="flex h-6 shrink-0 items-center gap-1 bg-transparent px-1 text-[10px] opacity-65 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10" style={{ color: theme.node.text }} title={t("canvas.node.refreshTaskStatus")} aria-label={t("canvas.node.refreshTaskStatus")} onClick={(event) => (event.stopPropagation(), onRefreshTask?.(data))}>
                                 <RefreshCw className="size-3.5" />
+                                {t("canvas.node.refreshTask")}
                             </button>
                         </>
                     ) : null}
