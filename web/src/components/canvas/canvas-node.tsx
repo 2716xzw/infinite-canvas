@@ -52,6 +52,7 @@ type CanvasNodeProps = {
     onRetryBatchImage?: (node: CanvasNodeData, imageId: string) => void;
     onDeleteBatchImage?: (nodeId: string, imageId: string) => void;
     onRetry?: (node: CanvasNodeData) => void;
+    onRefreshTask?: (node: CanvasNodeData) => void;
     onGenerateImage?: (node: CanvasNodeData) => void;
     onViewImage?: (node: CanvasNodeData) => void;
     onContextMenu: (event: React.MouseEvent, nodeId: string) => void;
@@ -116,6 +117,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     onRetryBatchImage,
     onDeleteBatchImage,
     onRetry,
+    onRefreshTask,
     onGenerateImage,
     onViewImage,
     onContextMenu,
@@ -333,7 +335,7 @@ export const CanvasNode = React.memo(function CanvasNode({
             onContextMenu={(event) => onContextMenu(event, data.id)}
         >
             {(isSelected || hovered || isEditingTitle) && (
-                <div className="absolute left-3 top-[-28px] z-[65] max-w-[calc(100%-24px)]" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+                <div className="absolute left-3 top-[-28px] z-[65] flex max-w-[calc(100%-24px)] items-center gap-2" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                     {isEditingTitle ? (
                         <input
                             ref={titleInputRef}
@@ -354,7 +356,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                     ) : (
                         <button
                             type="button"
-                            className="block max-w-full truncate border-b border-dashed border-transparent px-0 py-0.5 text-left text-xs font-medium opacity-75 transition hover:border-current hover:opacity-100"
+                            className="block min-w-0 max-w-full truncate border-b border-dashed border-transparent px-0 py-0.5 text-left text-xs font-medium opacity-75 transition hover:border-current hover:opacity-100"
                             style={{ color: theme.node.text }}
                             title={t("canvas.node.renameHint")}
                             onDoubleClick={(event) => {
@@ -365,6 +367,16 @@ export const CanvasNode = React.memo(function CanvasNode({
                             {data.title || t("canvas.node.untitled")}
                         </button>
                     )}
+                    {data.metadata?.taskId ? (
+                        <>
+                            <span className="max-w-40 truncate font-mono text-[10px] opacity-55" style={{ color: theme.node.text }} title={data.metadata.taskId}>
+                                {t("canvas.node.taskId", { id: data.metadata.taskId })}
+                            </span>
+                            <button type="button" className="grid size-6 shrink-0 place-items-center bg-transparent opacity-60 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10" style={{ color: theme.node.text }} title={t("canvas.node.refreshTaskStatus")} aria-label={t("canvas.node.refreshTaskStatus")} onClick={(event) => (event.stopPropagation(), onRefreshTask?.(data))}>
+                                <RefreshCw className="size-3.5" />
+                            </button>
+                        </>
+                    ) : null}
                 </div>
             )}
 

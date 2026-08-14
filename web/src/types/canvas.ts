@@ -70,6 +70,9 @@ export type CanvasNodeMetadata = {
     mimeType?: string;
     bytes?: number;
     durationMs?: number;
+    taskId?: string;
+    taskProvider?: "openai" | "seedance" | "plugin";
+    taskModel?: string;
     groupId?: string;
     interactive?: boolean; // Plugin node interaction/move state; see CanvasNodeDefinition.interactionToggle.
 };
