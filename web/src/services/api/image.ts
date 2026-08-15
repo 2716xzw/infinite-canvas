@@ -244,8 +244,10 @@ function resolveImageDataUrl(item: Record<string, unknown>) {
 }
 
 function parseImagePayload(payload: ImageApiResponse) {
+    const apiError = readApiErrorMessage(payload.error);
+    if (apiError) throw new Error(apiError);
     if (typeof payload.code === "number" && payload.code !== 0) {
-        throw new Error(payload.msg || apiText("requestFailed"));
+        throw new Error(readApiErrorMessage(payload) || apiText("requestFailed"));
     }
     // Support data, images, and results response fields used by different APIs.
     const imageList = payload.data

@@ -339,6 +339,8 @@ function unwrapSeedanceTask(payload: ApiEnvelope<SeedanceTask>) {
 
 function unwrapEnvelope<T>(payload: ApiEnvelope<T>, emptyMessage: string): T {
     if (!payload) throw new Error(emptyMessage);
+    const apiError = typeof payload === "object" ? readApiErrorMessage((payload as { error?: unknown }).error) : "";
+    if (apiError) throw new Error(apiError);
     if (typeof payload === "object" && "data" in payload) {
         const envelope = payload as { code?: number | string; data?: T | null };
         if (envelope.code !== undefined && envelope.code !== 0 && envelope.code !== "0") throw new Error(readApiErrorMessage(payload) || apiText("requestFailed"));

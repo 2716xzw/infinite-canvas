@@ -7,6 +7,7 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Canvas generation error details: when image or video APIs return an error object such as `{ error: { message } }`, failed canvas nodes should display that upstream message instead of a generic missing-image or missing-task error.
 - OpenAI-compatible image generation and editing: requests should send `response_format: "url"`; URL responses should render on the canvas and continue to support persistence and download, while providers that still return `b64_json` should remain compatible.
 - Canvas asynchronous video tasks: after task creation, the video node title should show the upstream task ID and a manual refresh button; leaving and reopening the canvas should automatically requeue unfinished loading or failed tasks; clicking refresh should report when polling is already active, or otherwise requeue continuous polling until the upstream task completes or explicitly fails.
 - MiniMax H3 video parameters: selecting the model should fix resolution to 1440P, offer only the six supported ratios and 5–15 second durations, then submit those H3 values through both OpenAI-compatible and Ark task channels as `resolution`, `ratio`, and `duration`, without also submitting `size` or the Seedance-only `generate_audio` and `watermark` parameters; Seedance models should retain their existing parameters.
