@@ -202,7 +202,7 @@ if (images.length === 0) {
     method: "post",
     url: \`\${baseUrl}/v1/images/generations\`,
     headers: { "Content-Type": "application/json", Authorization: \`Bearer \${apiKey}\` },
-    data: { model, prompt, n: params.count, size: params.size, response_format: "b64_json" },
+    data: { model, prompt, n: params.count, size: params.size, response_format: "url" },
   });
   return (data.data || []).map((item) => item.b64_json ? \`data:image/png;base64,\${item.b64_json}\` : item.url);
 }
@@ -212,7 +212,7 @@ const form = new FormData();
 form.set("model", model);
 form.set("prompt", prompt);
 form.set("n", String(params.count));
-form.set("response_format", "b64_json");
+form.set("response_format", "url");
 for (const dataUrl of images) {
   form.append("image", await (await fetch(dataUrl)).blob(), "ref.png");
 }
